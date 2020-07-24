@@ -1,43 +1,55 @@
-import React,{useRef, useCallback, useContext} from 'react';
+import React, { useRef, useCallback } from 'react';
 import { FiLogIn, FiMail, FiLock } from 'react-icons/fi';
-import {Form} from '@unform/web';
+import { Form } from '@unform/web';
 import * as Yup from 'yup';
-import { FormHandles} from '@unform/core';
+import { FormHandles } from '@unform/core';
 import logoImg from '../../assets/logo.svg';
 import { Container, Content, Background } from './styles';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import getValidationErros from '../../utils/getValidationErros';
-import {AuthContext} from '../../context/authContext';
-
+import { useAuth } from '../../Hooks/auth';
+import { useToast } from '../../Hooks/Toast';
 
 interface SigInFormData {
   email: string;
-  password:string;
+  password: string;
 }
 
 const SignIn: React.FC = () => {
   const formRef = useRef<FormHandles>(null);
-  const {SigIn} = useContext(AuthContext);
-
-  const handleSubmit = useCallback(async (data: SigInFormData) => {
-     try{
+  const { SigIn } = useAuth();
+  const { addToast } = useToast();
+  const handleSubmit = useCallback(
+    async (data: SigInFormData) => {
+      try {
         formRef.current?.setErrors({});
         const schema = Yup.object().shape({
-          email: Yup.string().required('Email obrigatório').email('Digite um Email válido'),
-          password: Yup.string().required('Senha obrigatória')
+          email: Yup.string()
+            .required('Email obrigatório')
+            .email('Digite um Email válido'),
+          password: Yup.string().required('Senha obrigatória'),
         });
 
-        await schema.validate(data,{abortEarly:false});
-        SigIn({
+        await schema.validate(data, { abortEarly: false });
+        await SigIn({
           email: data.email,
-          password: data.password
+          password: data.password,
         });
-     }catch(err){
-         const erros = getValidationErros(err);
-         formRef.current?.setErrors(erros);
-     }
-  },[])
+      } catch (err) {
+        if (err instanceof Yup.ValidationError) {
+          const erros = getValidationErros(err);
+          formRef.current?.setErrors(erros);
+        }
+        addToast({
+          type: 'error',
+          title: 'Erro no servidor',
+          description: 'Erro ao tentar fazer login',
+        });
+      }
+    },
+    [SigIn, addToast],
+  );
 
   return (
     <Container>
